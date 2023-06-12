@@ -1,0 +1,220 @@
+---
+title: "Visualization_part(c): Histogram and Density plot"
+output: html_document
+---
+
+In this lab, you we learn how to use ggplot to make Histograms, Density plot with single and multi variables. 
+
+```{r}
+# Load required libraries
+library(ggplot2)
+library(dplyr)
+library(magrittr)
+library(gridExtra)
+```
+
+# 1: Histogram:
+A histogram is an approximate representation of the distribution of numerical data. It was first introduced by Karl Pearson. 
+- A histogram represents the frequencies of values of a variable bucketed into ranges. Histogram is similar to bar chat but the difference is it groups the values into continuous ranges. Each bar in histogram represents the height of the number of values present in that range.
+
+## 1-a: Single Variable - Histogram
+```{r}
+## >> geom_histogram() Visualise the distribution of a single continuous variable by dividing the x axis into bins and counting the number of observations in each bin.
+
+hist_p1 <- ggplot(mpg, aes(x = cty)) +
+        geom_histogram()
+hist_p1
+```
+
+```{r}
+hist_p2 <- ggplot(mpg, aes(x = cty)) +
+        geom_histogram(binwidth = 3, color = "black", fill = "pink")
+
+hist_p2
+```
+
+```{r}
+## >> geom_vline(): Adds a vertical line to the grpah
+hist_p3 <- ggplot(mpg, aes(x = cty)) +
+           geom_histogram(binwidth = 2.5, color = "black", fill = "pink") + 
+           geom_vline(xintercept = mean(mpg$cty), color = "red", linetype = "dashed", size=2)
+hist_p3
+```
+
+```{r}
+## >> theme_update() and theme_replace() are shorthands for changing individual elements in the current theme. 
+temp <- select(mpg, manufacturer, cty)
+temp <- filter(temp, manufacturer=="audi"|manufacturer=="dodge")
+
+hist_p4 <- ggplot(temp, aes(x = cty, fill=manufacturer)) +
+           geom_histogram(alpha = 0.5) + 
+           theme_update(text = element_text(size=16))
+hist_p4
+
+# Quiz: How !!
+```
+
+```{r}
+
+#detach("package:plyr") 
+temp <- select(mpg, manufacturer, cty)
+temp <- filter(temp, manufacturer=="audi"|manufacturer=="dodge")
+
+
+compare_mean <- summarise(group_by(temp,manufacturer), Mean=mean(cty))
+
+## ?? >> summarise(group_by(temp,manufacturer), Mean=mean(cty)) << to check the results!!
+
+hist_p4 <- ggplot(temp, aes(x = cty, fill=manufacturer)) +
+           geom_histogram() + 
+           geom_vline(data = compare_mean, xintercept = compare_mean$Mean,color = c("blue", "red"), linetype = "dashed", size=1)+
+           theme_update(text = element_text(size=16))
+hist_p4
+
+# Quiz: why we detached plyr? 
+
+## >> If we add the library dplyr to reinforce again, there will be two mean results.
+## >>> compare_mean <- dplyr::summarise(group_by(temp, manufacturer), Mean=mean(cty))  # two mean results
+## ggplot>>> compare_mean <- plyr::summarise(group_by(temp, manufacturer), Mean=mean(cty))   # only one mean again
+
+```
+
+## 1-b: Density Plot
+Kernal density plots are usually a much more effective way to view the distribution of a variable
+```{r}
+## geom_density(): Computes and draws kernel density estimate, which is a smoothed version of the histogram. This is a useful alternative to the histogram for continuous data that comes from an underlying smooth distribution.
+dens_p1 <- ggplot(mpg, aes(x = cty)) +
+          geom_density(fill="pink") 
+dens_p1
+```
+## 1-c: A multi density chart
+A multi density chart is a density chart where several groups are represented. It allows to compare their distribution. The issue with this kind of chart is that it gets easily cluttered: groups overlap each other and the figure gets unreadable.
+```{r}
+# alpha refers to the opacity of a geom. Values of alpha range from 0 to 1, with lower values corresponding to more transparent colors.
+temp <- select(mpg, manufacturer, cty)
+temp <- filter(temp, manufacturer=="audi"|manufacturer=="dodge")
+
+dens_p2 <- ggplot(temp, aes(x = cty, fill=manufacturer)) + 
+            geom_density(alpha = 0.5) #alpha is the transparency between the overlap in graphs 
+dens_p2
+```
+## 2- Two dimension histogram
+A 2D histogram, also known as a density heatmap, is the 2-dimensional generalization of a histogram which resembles a heatmap but is computed by grouping a set of points specified by their x and y coordinates into bins, and applying an aggregation function such as count or sum (if z is provided) to compute the color of the tile representing the bin. 
+
+- About the DF (faithful): Waiting time between eruptions and the duration of the eruption for the Old Faithful geyser in Yellowstone National Park, Wyoming, USA.
+
+- Use'help("faithful")' to learn more. 
+
+```{r}
+# Two dimension histogram
+hist_classic <- ggplot(faithful, aes(x=eruptions)) + 
+                geom_histogram()
+
+hist_2d <- ggplot(faithful, aes(x=eruptions, y=waiting)) + 
+           geom_bin2d()
+
+grid.arrange(hist_classic, hist_2d, ncol = 2, heights=c(2,1))
+```
+
+
+```{r}
+dens_2d_p1 <- ggplot(faithful, aes(x=eruptions, y=waiting)) +
+              geom_point() + 
+              stat_density2d()
+
+dens_2d_p2 <- ggplot(faithful, aes(x=eruptions, y=waiting)) +
+              geom_point() + 
+              stat_density2d(aes(fill = ..level..), geom="polygon")
+
+grid.arrange(dens_2d_p1, dens_2d_p2,ncol = 2)
+```
+
+# 3-Relationship between variables:
+## 3-a Simple Scatter Plots
+
+```{r}
+sample_data <- mpg
+scater_p1 <- ggplot(sample_data,aes(cty,hwy)) +
+             geom_point() 
+scater_p1
+```
+
+```{r}
+
+scater_p2 <- ggplot(sample_data,aes(cty,hwy,color=factor(cyl),shape=factor(drv),size=displ)) +
+             geom_point()
+scater_p2
+```
+
+```{r}
+cor(mpg$cty,mpg$hwy)
+cor(mpg$hwy,mpg$cty)
+
+# Quiz: Why there no difference in the cor results?
+```
+## 3-b Scatter Plots with fitted lines
+
+**lm** is used to fit linear models. It can be used to carry out regression, single stratum analysis of variance and analysis of covariance (although aov may provide a more convenient interface for these).
+
+```{r}
+fit1 <- lm(hwy~cty,mpg)
+fit2 <- lm(cty~hwy,mpg)
+
+summary(fit1)
+summary(fit2)
+
+# Do you see changes in the regression results? Can you distinguish between dependent var and independent var?
+```
+
+```{r}
+## geom_smooth() is used to fit a model to data 
+## se: standar error
+reg_p1 <- ggplot(mpg, aes(x=cty, y=hwy)) + 
+          geom_point()+ geom_smooth(method=lm, se=T)
+reg_p1
+
+# Quiz: 
+```
+
+```{r}
+ggplot(mpg, aes(x=cty, y=hwy)) + 
+  geom_point()+ geom_smooth()
+# Loess Regression is the most common method used to smoothen a volatile time series. It is a non-parametric methods where least squares regression is performed in localized subsets, which makes it a suitable candidate for smoothing any numerical vector.
+```
+```{r}
+# getting  individual models for each factor
+# se=FALSE: removes the Standard Error
+ggplot(mpg, aes(x=cty, y=hwy, color=factor(drv))) + 
+  geom_point() +
+  geom_smooth(method=lm, se=TRUE)
+
+## Intrepretation: The linear model can be a good fit for modeling
+```
+## 3-c: Scaling in Scatter Plot
+
+```{r}
+library(MASS)
+## >> MASS: Average brain and body weights for 28 species of land animals.
+
+
+help(Animals)
+ggplot(Animals, aes(x = body, y = brain)) + geom_point()
+```
+
+```{r}
+# scale_x_continuous() and scale_y_continuous() are the default scales for continuous x and y aesthetics. There are three variants that set the trans argument for commonly used transformations: scale_*_log10(), scale_*_sqrt() and scale_*_reverse()
+
+library(scales)
+p1 <- ggplot(Animals, aes(x = body, y = brain)) + geom_point() +
+     scale_x_log10(breaks = trans_breaks("log10", function(x) 10^x),
+              labels = trans_format("log10", math_format(10^.x))) +
+     scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x),
+              labels = trans_format("log10", math_format(10^.x))) 
+
+p2 <- p1 + annotation_logticks()  
+
+grid.arrange(p1, p2,ncol = 2)
+
+## In log-scale the relationship is linear 
+```
+** This is the end of this lab **
